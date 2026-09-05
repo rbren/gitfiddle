@@ -36,10 +36,7 @@ fn sine_render_is_deterministic() {
 fn sine_render_is_440_hz_full_scale() {
     let samples = render(SINE, 1.0);
     assert_eq!(samples.len(), 48_000);
-    let peak = samples
-        .iter()
-        .map(|s| s[0].abs())
-        .fold(0.0f32, f32::max);
+    let peak = samples.iter().map(|s| s[0].abs()).fold(0.0f32, f32::max);
     assert!(peak > 0.99 && peak <= 1.0, "peak {peak}");
     // Count rising zero crossings to estimate frequency.
     let mut crossings = 0;
@@ -144,10 +141,7 @@ fn known_golden_hash_for_sine_fixture() {
     //   cargo test -p bitfiddle-engine --test golden_render -- --nocapture print_golden
     let samples = render(SINE, 0.25);
     let hash = sample_hash(&samples);
-    assert_eq!(
-        hash, GOLDEN_SINE_HASH,
-        "golden mismatch: got {hash:#018x}"
-    );
+    assert_eq!(hash, GOLDEN_SINE_HASH, "golden mismatch: got {hash:#018x}");
 }
 
 // Committed golden value; CI never regenerates it.

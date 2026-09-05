@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Tests
+        run: cargo test --workspace
+      - name: Fixture validation
+        run: |
+          for f in fixtures/*.bitfiddle.yaml; do
+            cargo run -q -p bitfiddle-cli -- validate "$f"
+          done
+      - name: Offline render smoke
+        run: cargo run -q -p bitfiddle-cli -- render fixtures/sine.bitfiddle.yaml /tmp/out.wav --seconds 1
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: cd frontend && (npm ci || npm install)
+      - name: Typecheck & build
+        run: cd frontend && npm run build
+      - name: Tests
+        run: cd frontend && npm test

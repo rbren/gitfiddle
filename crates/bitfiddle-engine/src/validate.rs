@@ -37,8 +37,8 @@ pub enum ValidationError {
 
 /// Validate the parsed document against the normative JSON Schema.
 pub fn validate_schema(doc_yaml: &str) -> Result<(), ValidationError> {
-    let value: serde_json::Value = serde_yaml::from_str(doc_yaml)
-        .map_err(|e| ValidationError::Schema(e.to_string()))?;
+    let value: serde_json::Value =
+        serde_yaml::from_str(doc_yaml).map_err(|e| ValidationError::Schema(e.to_string()))?;
     let schema: serde_json::Value =
         serde_json::from_str(RACK_SCHEMA).expect("bundled schema parses");
     let compiled = jsonschema::JSONSchema::options()
@@ -160,8 +160,8 @@ pub fn validate_semantics(doc: &RackDocument) -> Result<(), ValidationError> {
 /// Full validation used by Apply: schema then semantics.
 pub fn validate_document(yaml_text: &str) -> Result<RackDocument, ValidationError> {
     validate_schema(yaml_text)?;
-    let doc = RackDocument::from_yaml(yaml_text)
-        .map_err(|e| ValidationError::Schema(e.to_string()))?;
+    let doc =
+        RackDocument::from_yaml(yaml_text).map_err(|e| ValidationError::Schema(e.to_string()))?;
     validate_semantics(&doc)?;
     Ok(doc)
 }

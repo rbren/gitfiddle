@@ -148,7 +148,7 @@ pub fn instantiate(
         "app.oscillator" => Box::new(Oscillator::new(parameters)),
         "app.volume" => Box::new(Volume),
         "app.adsr" => Box::new(Adsr::new(parameters)),
-        "app.clock" => Box::new(ClockModule::default()),
+        "app.clock" => Box::new(ClockModule),
         "app.audio_output" => Box::new(AudioOutput::default()),
         "app.noise" => Box::new(Noise::new(parameters)),
         "app.qwerty" => Box::new(Qwerty),
@@ -160,7 +160,10 @@ pub fn instantiate(
 }
 
 fn param_f32(p: &serde_json::Map<String, Value>, key: &str, default: f32) -> f32 {
-    p.get(key).and_then(Value::as_f64).map(|v| v as f32).unwrap_or(default)
+    p.get(key)
+        .and_then(Value::as_f64)
+        .map(|v| v as f32)
+        .unwrap_or(default)
 }
 
 fn param_str<'a>(p: &'a serde_json::Map<String, Value>, key: &str, default: &'a str) -> &'a str {
@@ -346,11 +349,23 @@ impl DspModule for Adsr {
             Some(SignalBlock::Gate(g)) => g,
             _ => &empty,
         };
-        let chans = gates.len().max(1).min(crate::MAX_CHANNELS);
+        let chans = gates.len().clamp(1, crate::MAX_CHANNELS);
         let sr = ctx.sample_rate as f32;
-        let attack_step = if self.attack_s > 0.0 { 1.0 / (self.attack_s * sr) } else { 1.0 };
-        let decay_step = if self.decay_s > 0.0 { 1.0 / (self.decay_s * sr) } else { 1.0 };
-        let release_step = if self.release_s > 0.0 { 1.0 / (self.release_s * sr) } else { 1.0 };
+        let attack_step = if self.attack_s > 0.0 {
+            1.0 / (self.attack_s * sr)
+        } else {
+            1.0
+        };
+        let decay_step = if self.decay_s > 0.0 {
+            1.0 / (self.decay_s * sr)
+        } else {
+            1.0
+        };
+        let release_step = if self.release_s > 0.0 {
+            1.0 / (self.release_s * sr)
+        } else {
+            1.0
+        };
 
         let mut out = Vec::with_capacity(chans);
         for ci in 0..chans {
@@ -448,11 +463,9 @@ impl AudioOutput {
     pub fn mixdown(voices: &[Voice], frames: usize) -> Vec<[f32; 2]> {
         let mut out = vec![[0.0f32; 2]; frames];
         for v in voices {
-            for f in 0..frames {
-                let l = v.left.get(f).copied().unwrap_or(0.0);
-                let r = v.right_lane().get(f).copied().unwrap_or(0.0);
-                out[f][0] += l;
-                out[f][1] += r;
+            for (f, s) in out.iter_mut().enumerate() {
+                s[0] += v.left.get(f).copied().unwrap_or(0.0);
+                s[1] += v.right_lane().get(f).copied().unwrap_or(0.0);
             }
         }
         for s in &mut out {
@@ -571,7 +584,11 @@ impl Mixer8 {
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
         }
-        Mixer8 { gains, mutes, solos }
+        Mixer8 {
+            gains,
+            mutes,
+            solos,
+        }
     }
 }
 
@@ -624,5 +641,3 @@ impl DspModule for Scope {
         HashMap::new()
     }
 }
-
-

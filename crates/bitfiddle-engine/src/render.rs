@@ -69,7 +69,9 @@ impl Engine {
         for m in &doc.modules {
             for (port, state) in &m.inputs {
                 if let InputState::Audio {
-                    default_source, seed, ..
+                    default_source,
+                    seed,
+                    ..
                 } = state
                 {
                     default_sources.insert(
@@ -131,14 +133,8 @@ impl Engine {
             if module_doc.bypassed {
                 // v2 bypass for built-ins with declared audio route: copy in->out.
                 let spec = &self.specs[&module_id];
-                let has_audio_in = spec
-                    .inputs
-                    .iter()
-                    .any(|p| p.signal == SignalType::Audio);
-                let has_audio_out = spec
-                    .outputs
-                    .iter()
-                    .any(|p| p.signal == SignalType::Audio);
+                let has_audio_in = spec.inputs.iter().any(|p| p.signal == SignalType::Audio);
+                let has_audio_out = spec.outputs.iter().any(|p| p.signal == SignalType::Audio);
                 if has_audio_in && has_audio_out {
                     let in_port = spec
                         .inputs
@@ -154,13 +150,8 @@ impl Engine {
                         .unwrap()
                         .id
                         .clone();
-                    let block = self.resolve_input(
-                        &module_doc,
-                        &in_port,
-                        &published,
-                        sample_rate,
-                        frames,
-                    );
+                    let block =
+                        self.resolve_input(&module_doc, &in_port, &published, sample_rate, frames);
                     published.insert(
                         Endpoint {
                             module: module_id,
@@ -176,8 +167,7 @@ impl Engine {
             let spec = self.specs[&module_id].clone();
             let mut resolved: HashMap<String, SignalBlock> = HashMap::new();
             for p in &spec.inputs {
-                let block =
-                    self.resolve_input(&module_doc, &p.id, &published, sample_rate, frames);
+                let block = self.resolve_input(&module_doc, &p.id, &published, sample_rate, frames);
                 resolved.insert(p.id.clone(), block);
             }
 
@@ -187,15 +177,16 @@ impl Engine {
             // NaN/inf sanitation at the module boundary (PRD §5.1).
             for (port, block) in outputs.iter_mut() {
                 if block.sanitize() {
-                    self.faults
-                        .push(format!("{}.{port}: non-finite output replaced", module_doc.name));
+                    self.faults.push(format!(
+                        "{}.{port}: non-finite output replaced",
+                        module_doc.name
+                    ));
                 }
             }
 
             if module_doc.type_id == "app.audio_output" {
                 if let Some(SignalBlock::Audio(voices)) = resolved.get("audio_in") {
-                    let block =
-                        crate::modules::builtins::AudioOutput::mixdown(voices, frames);
+                    let block = crate::modules::builtins::AudioOutput::mixdown(voices, frames);
                     for (o, s) in mix.iter_mut().zip(block.iter()) {
                         o[0] += s[0];
                         o[1] += s[1];
@@ -312,7 +303,12 @@ impl Engine {
 
     /// A disconnected Audio input produces its selected default source
     /// (PRD §6.4) with a deterministic per-input seed.
-    fn default_audio(&mut self, endpoint: &Endpoint, frames: usize, sample_rate: u32) -> Vec<Voice> {
+    fn default_audio(
+        &mut self,
+        endpoint: &Endpoint,
+        frames: usize,
+        sample_rate: u32,
+    ) -> Vec<Voice> {
         let Some(state) = self.default_sources.get_mut(endpoint) else {
             return Vec::new();
         };

@@ -74,10 +74,7 @@ fn input_state_signal_mismatch_rejected() {
         "      note:\n        signal: control\n        baseline: 0\n        window: 1",
     );
     let err = validate_document(&text).unwrap_err();
-    assert!(matches!(
-        err,
-        ValidationError::InputSignalMismatch { .. }
-    ));
+    assert!(matches!(err, ValidationError::InputSignalMismatch { .. }));
 }
 
 #[test]

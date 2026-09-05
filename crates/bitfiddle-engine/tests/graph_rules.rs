@@ -63,7 +63,14 @@ fn doc(modules: Vec<ModuleInstance>, wires: Vec<Wire>, input_sync: Vec<InputSync
     }
 }
 
-fn wire(src: &ModuleInstance, sport: &str, dst: &ModuleInstance, dport: &str, signal: SignalType, order: u32) -> Wire {
+fn wire(
+    src: &ModuleInstance,
+    sport: &str,
+    dst: &ModuleInstance,
+    dport: &str,
+    signal: SignalType,
+    order: u32,
+) -> Wire {
     Wire {
         id: Uuid::new_v4(),
         signal,
@@ -95,7 +102,11 @@ fn topological_order_respects_wires() {
     let w1 = wire(&osc, "audio_out", &vol, "audio_in", SignalType::Audio, 0);
     let w2 = wire(&vol, "audio_out", &out, "audio_in", SignalType::Audio, 1);
     // Deliberately declare modules in reverse order.
-    let d = doc(vec![out.clone(), vol.clone(), osc.clone()], vec![w1, w2], vec![]);
+    let d = doc(
+        vec![out.clone(), vol.clone(), osc.clone()],
+        vec![w1, w2],
+        vec![],
+    );
     let g = build_graph(&d, &specs_for(&d)).unwrap();
     let pos = |id| g.execution_order.iter().position(|x| *x == id).unwrap();
     assert!(pos(osc.id) < pos(vol.id));
@@ -207,7 +218,11 @@ fn sync_group_shares_sources_across_members() {
         },
         waypoints: vec![],
     };
-    let d = doc(vec![osc.clone(), v1.clone(), v2.clone()], vec![w], vec![sync]);
+    let d = doc(
+        vec![osc.clone(), v1.clone(), v2.clone()],
+        vec![w],
+        vec![sync],
+    );
     let g = build_graph(&d, &specs_for(&d)).unwrap();
     // Both endpoints share one representative with one source list.
     let e1 = Endpoint {

@@ -38,8 +38,16 @@ impl ModuleSpec {
     /// override it (PRD §7.3).
     pub fn category(&self) -> Category {
         let has = |ports: &[PortDecl], s: SignalType| ports.iter().any(|p| p.signal == s);
-        let audio_in = self.inputs.iter().filter(|p| p.signal == SignalType::Audio).count();
-        let audio_out = self.outputs.iter().filter(|p| p.signal == SignalType::Audio).count();
+        let audio_in = self
+            .inputs
+            .iter()
+            .filter(|p| p.signal == SignalType::Audio)
+            .count();
+        let audio_out = self
+            .outputs
+            .iter()
+            .filter(|p| p.signal == SignalType::Audio)
+            .count();
         if audio_in == 0 && audio_out == 0 {
             if has(&self.outputs, SignalType::Note) {
                 return Category::Sequencer;

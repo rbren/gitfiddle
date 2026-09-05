@@ -47,7 +47,9 @@ pub enum GraphError {
     UnknownModule(Uuid),
     #[error("unknown port {port} on module {module}")]
     UnknownPort { module: Uuid, port: String },
-    #[error("signal type mismatch on wire {wire}: source {source_signal:?} target {target_signal:?}")]
+    #[error(
+        "signal type mismatch on wire {wire}: source {source_signal:?} target {target_signal:?}"
+    )]
     SignalMismatch {
         wire: Uuid,
         source_signal: SignalType,
