@@ -172,13 +172,18 @@ impl InputState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum AudioDefaultSource {
+    #[serde(rename = "silence")]
     Silence,
+    #[serde(rename = "white_noise")]
     WhiteNoise,
+    #[serde(rename = "sine_440")]
     Sine440,
+    #[serde(rename = "saw_440")]
     Saw440,
+    #[serde(rename = "triangle_440")]
     Triangle440,
+    #[serde(rename = "square_440")]
     Square440,
 }
 
