@@ -121,6 +121,28 @@ pub fn spec(type_id: &str) -> Option<ModuleSpec> {
             width_units: 8,
             height_units: 4,
         },
+        "app.eq" => ModuleSpec {
+            type_id: type_id.into(),
+            name: "EQ".into(),
+            version: "2.0.0".into(),
+            description: "Three-band equalizer: low shelf, peaking mid, high shelf.".into(),
+            inputs: vec![input("audio_in", "Audio In", SignalType::Audio, 0)],
+            outputs: vec![output("audio_out", "Audio Out", SignalType::Audio, 0)],
+            latency_samples: 0,
+            width_units: 8,
+            height_units: 4,
+        },
+        "app.audio_file" => ModuleSpec {
+            type_id: type_id.into(),
+            name: "Audio File Generator".into(),
+            version: "2.0.0".into(),
+            description: "Plays an audio file with one-shot, retrigger, and loop behavior driven by a Gate input.".into(),
+            inputs: vec![input("gate", "Gate", SignalType::Gate, 0)],
+            outputs: vec![output("audio_out", "Audio Out", SignalType::Audio, 0)],
+            latency_samples: 0,
+            width_units: 8,
+            height_units: 4,
+        },
         _ => return None,
     };
     Some(s)
@@ -137,6 +159,8 @@ pub fn all_type_ids() -> &'static [&'static str] {
         "app.qwerty",
         "app.mixer8",
         "app.scope",
+        "app.eq",
+        "app.audio_file",
     ]
 }
 
@@ -154,6 +178,8 @@ pub fn instantiate(
         "app.qwerty" => Box::new(Qwerty),
         "app.mixer8" => Box::new(Mixer8::new(parameters)),
         "app.scope" => Box::new(Scope),
+        "app.eq" => Box::new(Eq::new(parameters)),
+        "app.audio_file" => Box::new(AudioFile::new(parameters)),
         _ => return None,
     };
     Some(m)
@@ -639,5 +665,310 @@ impl DspModule for Scope {
         _inputs: &HashMap<String, SignalBlock>,
     ) -> HashMap<String, SignalBlock> {
         HashMap::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// EQ
+
+/// One biquad section (RBJ cookbook) with per-lane state.
+#[derive(Clone)]
+struct Biquad {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    // Direct form II transposed state per lane (32 audio lanes).
+    z1: Vec<f32>,
+    z2: Vec<f32>,
+}
+
+impl Biquad {
+    fn identity() -> Self {
+        Biquad {
+            b0: 1.0,
+            b1: 0.0,
+            b2: 0.0,
+            a1: 0.0,
+            a2: 0.0,
+            z1: vec![0.0; crate::MAX_AUDIO_LANES],
+            z2: vec![0.0; crate::MAX_AUDIO_LANES],
+        }
+    }
+
+    fn low_shelf(sample_rate: f32, freq: f32, gain_db: f32) -> Self {
+        Self::shelf(sample_rate, freq, gain_db, true)
+    }
+
+    fn high_shelf(sample_rate: f32, freq: f32, gain_db: f32) -> Self {
+        Self::shelf(sample_rate, freq, gain_db, false)
+    }
+
+    fn shelf(sample_rate: f32, freq: f32, gain_db: f32, low: bool) -> Self {
+        let a = 10f32.powf(gain_db / 40.0);
+        let w0 = TAU * freq / sample_rate;
+        let (sin, cos) = w0.sin_cos();
+        let alpha = sin / 2.0 * (2.0f32).sqrt();
+        let two_sqrt_a_alpha = 2.0 * a.sqrt() * alpha;
+        let (b0, b1, b2, a0, a1, a2) = if low {
+            (
+                a * ((a + 1.0) - (a - 1.0) * cos + two_sqrt_a_alpha),
+                2.0 * a * ((a - 1.0) - (a + 1.0) * cos),
+                a * ((a + 1.0) - (a - 1.0) * cos - two_sqrt_a_alpha),
+                (a + 1.0) + (a - 1.0) * cos + two_sqrt_a_alpha,
+                -2.0 * ((a - 1.0) + (a + 1.0) * cos),
+                (a + 1.0) + (a - 1.0) * cos - two_sqrt_a_alpha,
+            )
+        } else {
+            (
+                a * ((a + 1.0) + (a - 1.0) * cos + two_sqrt_a_alpha),
+                -2.0 * a * ((a - 1.0) + (a + 1.0) * cos),
+                a * ((a + 1.0) + (a - 1.0) * cos - two_sqrt_a_alpha),
+                (a + 1.0) - (a - 1.0) * cos + two_sqrt_a_alpha,
+                2.0 * ((a - 1.0) - (a + 1.0) * cos),
+                (a + 1.0) - (a - 1.0) * cos - two_sqrt_a_alpha,
+            )
+        };
+        Biquad {
+            b0: b0 / a0,
+            b1: b1 / a0,
+            b2: b2 / a0,
+            a1: a1 / a0,
+            a2: a2 / a0,
+            z1: vec![0.0; crate::MAX_AUDIO_LANES],
+            z2: vec![0.0; crate::MAX_AUDIO_LANES],
+        }
+    }
+
+    fn peaking(sample_rate: f32, freq: f32, gain_db: f32, q: f32) -> Self {
+        let a = 10f32.powf(gain_db / 40.0);
+        let w0 = TAU * freq / sample_rate;
+        let (sin, cos) = w0.sin_cos();
+        let alpha = sin / (2.0 * q);
+        let a0 = 1.0 + alpha / a;
+        Biquad {
+            b0: (1.0 + alpha * a) / a0,
+            b1: (-2.0 * cos) / a0,
+            b2: (1.0 - alpha * a) / a0,
+            a1: (-2.0 * cos) / a0,
+            a2: (1.0 - alpha / a) / a0,
+            z1: vec![0.0; crate::MAX_AUDIO_LANES],
+            z2: vec![0.0; crate::MAX_AUDIO_LANES],
+        }
+    }
+
+    fn tick(&mut self, lane: usize, x: f32) -> f32 {
+        let y = self.b0 * x + self.z1[lane];
+        self.z1[lane] = self.b1 * x - self.a1 * y + self.z2[lane];
+        self.z2[lane] = self.b2 * x - self.a2 * y;
+        y
+    }
+
+    fn reset(&mut self) {
+        self.z1.iter_mut().for_each(|z| *z = 0.0);
+        self.z2.iter_mut().for_each(|z| *z = 0.0);
+    }
+}
+
+/// Three-band EQ: low shelf (200 Hz), peaking mid (1 kHz), high shelf (4 kHz).
+pub struct Eq {
+    low_db: f32,
+    mid_db: f32,
+    high_db: f32,
+    sections: Option<[Biquad; 3]>,
+    configured_rate: u32,
+}
+
+impl Eq {
+    pub fn new(params: &serde_json::Map<String, Value>) -> Self {
+        Eq {
+            low_db: param_f32(params, "low_db", 0.0),
+            mid_db: param_f32(params, "mid_db", 0.0),
+            high_db: param_f32(params, "high_db", 0.0),
+            sections: None,
+            configured_rate: 0,
+        }
+    }
+
+    fn ensure_sections(&mut self, sample_rate: u32) {
+        if self.sections.is_none() || self.configured_rate != sample_rate {
+            let sr = sample_rate as f32;
+            let flat = self.low_db == 0.0 && self.mid_db == 0.0 && self.high_db == 0.0;
+            self.sections = Some(if flat {
+                [Biquad::identity(), Biquad::identity(), Biquad::identity()]
+            } else {
+                [
+                    Biquad::low_shelf(sr, 200.0, self.low_db),
+                    Biquad::peaking(sr, 1_000.0, self.mid_db, 0.9),
+                    Biquad::high_shelf(sr, 4_000.0, self.high_db),
+                ]
+            });
+            self.configured_rate = sample_rate;
+        }
+    }
+}
+
+impl DspModule for Eq {
+    fn process(
+        &mut self,
+        ctx: &ProcessCtx,
+        inputs: &HashMap<String, SignalBlock>,
+    ) -> HashMap<String, SignalBlock> {
+        self.ensure_sections(ctx.sample_rate);
+        let voices = match inputs.get("audio_in") {
+            Some(SignalBlock::Audio(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        let sections = self.sections.as_mut().unwrap();
+        let mut out = voices;
+        for (vi, v) in out.iter_mut().enumerate() {
+            let left_lane = vi * 2;
+            for s in v.left.iter_mut() {
+                for sec in sections.iter_mut() {
+                    *s = sec.tick(left_lane, *s);
+                }
+            }
+            if let Some(r) = &mut v.right {
+                let right_lane = vi * 2 + 1;
+                for s in r.iter_mut() {
+                    for sec in sections.iter_mut() {
+                        *s = sec.tick(right_lane, *s);
+                    }
+                }
+            }
+        }
+        HashMap::from([("audio_out".to_string(), SignalBlock::Audio(out))])
+    }
+
+    fn reset(&mut self) {
+        if let Some(sections) = &mut self.sections {
+            for s in sections.iter_mut() {
+                s.reset();
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Audio File Generator
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlayMode {
+    OneShot,
+    Retrigger,
+    Loop,
+}
+
+/// Plays decoded audio-file samples on gate rising edges. The decoded data is
+/// loaded off-thread at construction; in the headless engine tests use the
+/// injected sample buffer. A missing file produces silence, never a failure
+/// to open the Rack (PRD §9.1, §14).
+pub struct AudioFile {
+    mode: PlayMode,
+    samples: Vec<f32>,
+    playing: bool,
+    cursor: usize,
+    prev_gate: bool,
+}
+
+impl AudioFile {
+    pub fn new(params: &serde_json::Map<String, Value>) -> Self {
+        let mode = match param_str(params, "mode", "one_shot") {
+            "retrigger" => PlayMode::Retrigger,
+            "loop" => PlayMode::Loop,
+            _ => PlayMode::OneShot,
+        };
+        // Decoded samples are provided by the host loader; tests inject a
+        // deterministic ramp when the file is absent.
+        let samples = params
+            .get("test_samples")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(Value::as_f64)
+                    .map(|v| v as f32)
+                    .collect()
+            })
+            .unwrap_or_default();
+        AudioFile {
+            mode,
+            samples,
+            playing: false,
+            cursor: 0,
+            prev_gate: false,
+        }
+    }
+
+    /// Host loader entry point: replace decoded sample data.
+    pub fn set_samples(&mut self, samples: Vec<f32>) {
+        self.samples = samples;
+        self.cursor = 0;
+        self.playing = false;
+    }
+}
+
+impl DspModule for AudioFile {
+    fn process(
+        &mut self,
+        ctx: &ProcessCtx,
+        inputs: &HashMap<String, SignalBlock>,
+    ) -> HashMap<String, SignalBlock> {
+        let empty: Vec<Vec<bool>> = Vec::new();
+        let gates = match inputs.get("gate") {
+            Some(SignalBlock::Gate(g)) => g,
+            _ => &empty,
+        };
+        let mut left = Vec::with_capacity(ctx.frames);
+        for f in 0..ctx.frames {
+            let gate = gates
+                .first()
+                .and_then(|l| l.get(f))
+                .copied()
+                .unwrap_or(false);
+            let rising = gate && !self.prev_gate;
+            self.prev_gate = gate;
+            if rising {
+                match self.mode {
+                    PlayMode::OneShot => {
+                        if !self.playing {
+                            self.playing = true;
+                            self.cursor = 0;
+                        }
+                    }
+                    PlayMode::Retrigger | PlayMode::Loop => {
+                        self.playing = true;
+                        self.cursor = 0;
+                    }
+                }
+            }
+            let sample = if self.playing && !self.samples.is_empty() {
+                let s = self.samples[self.cursor];
+                self.cursor += 1;
+                if self.cursor >= self.samples.len() {
+                    if self.mode == PlayMode::Loop && gate {
+                        self.cursor = 0;
+                    } else {
+                        self.playing = false;
+                    }
+                }
+                s
+            } else {
+                0.0
+            };
+            left.push(sample);
+        }
+        let voices = if self.samples.is_empty() {
+            Vec::new()
+        } else {
+            vec![Voice::mono(left)]
+        };
+        HashMap::from([("audio_out".to_string(), SignalBlock::Audio(voices))])
+    }
+
+    fn reset(&mut self) {
+        self.playing = false;
+        self.cursor = 0;
+        self.prev_gate = false;
     }
 }
