@@ -39,7 +39,7 @@ acceptance sign-off (PRD §18.7).
 | §10 macros: recursive expansion, budgets, cycles | partial | `macros.rs` subsystem (in progress) |
 | §11 extensions: wasm-2/native-2 ABI, manifests | planned | manifest schema installed; hosts TBD |
 | §12 keyboard system | partial | frontend implementation |
-| §14 initial module set | partial | 9 of 11 built-ins (EQ, Audio File Generator TBD) |
+| §14 initial module set | auto | all 11 built-ins in `builtins.rs`; behavior tests in `module_behavior.rs` |
 | §15 performance targets | human/planned | requires macOS baseline hardware |
 | §17 YAML anchors/aliases rejected | auto | `from_yaml` pre-check |
 | §18.3 golden audio with committed hashes | auto | `known_golden_hash_for_sine_fixture` |
