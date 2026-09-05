@@ -3,10 +3,12 @@
 //! Usage:
 //!   bitfiddle render <rack.bitfiddle.yaml> <out.wav> [--seconds N]
 //!   bitfiddle validate <rack.bitfiddle.yaml>
+//!   bitfiddle modules
 
 use std::path::Path;
 use std::process::ExitCode;
 
+use bitfiddle_engine::modules::builtins::{all_type_ids, spec};
 use bitfiddle_engine::render::render_to_wav;
 use bitfiddle_engine::validate::validate_document;
 
@@ -15,13 +17,42 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("render") => cmd_render(&args[1..]),
         Some("validate") => cmd_validate(&args[1..]),
+        Some("modules") => cmd_modules(),
         _ => {
             eprintln!("usage:");
             eprintln!("  bitfiddle render <rack.bitfiddle.yaml> <out.wav> [--seconds N]");
             eprintln!("  bitfiddle validate <rack.bitfiddle.yaml>");
+            eprintln!("  bitfiddle modules");
             ExitCode::from(2)
         }
     }
+}
+
+fn cmd_modules() -> ExitCode {
+    for id in all_type_ids() {
+        let s = spec(id).unwrap();
+        let ins: Vec<String> = s
+            .inputs
+            .iter()
+            .map(|p| format!("{}:{}", p.id, p.signal.name()))
+            .collect();
+        let outs: Vec<String> = s
+            .outputs
+            .iter()
+            .map(|p| format!("{}:{}", p.id, p.signal.name()))
+            .collect();
+        println!(
+            "{:<18} {:<22} {:?}  {}x{}u  in[{}] out[{}]",
+            id,
+            s.name,
+            s.category(),
+            s.width_units,
+            s.height_units,
+            ins.join(", "),
+            outs.join(", ")
+        );
+    }
+    ExitCode::SUCCESS
 }
 
 fn cmd_render(args: &[String]) -> ExitCode {
