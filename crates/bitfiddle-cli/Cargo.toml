@@ -1,0 +1,13 @@
+[package]
+name = "bitfiddle-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Headless bitfiddle CLI: validate Rack YAML and render WAV offline"
+
+[[bin]]
+name = "bitfiddle"
+path = "src/main.rs"
+
+[dependencies]
+bitfiddle-engine = { path = "../bitfiddle-engine" }

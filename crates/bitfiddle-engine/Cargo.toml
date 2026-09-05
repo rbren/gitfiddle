@@ -1,0 +1,17 @@
+[package]
+name = "bitfiddle-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "bitfiddle signal model, typed DAG, merge rules, DSP modules, persistence, offline rendering"
+
+[dependencies]
+serde.workspace = true
+serde_yaml.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+jsonschema.workspace = true
+hound.workspace = true
+
+[dev-dependencies]

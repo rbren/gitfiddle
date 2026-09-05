@@ -19,5 +19,5 @@ serde_yaml = "0.9"
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = "1"
-jsonschema = "0.17"
+jsonschema = { version = "0.17", features = ["draft202012"] }
 hound = "3.5"

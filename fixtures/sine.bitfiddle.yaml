@@ -1,0 +1,65 @@
+format: bitfiddle-rack
+format_version: 2
+app_version: 2.0.0
+rack:
+  id: 7d44997e-b35a-4c69-a1fd-fab6ce28738d
+  name: Sine Rack
+  revision: 1
+  created_at: "2026-05-21T18:00:00Z"
+  modified_at: "2026-05-21T18:00:00Z"
+engine:
+  sample_rate: 48000
+  block_size: 128
+  default_device_id: null
+view:
+  pan: { x: 0, y: 0 }
+  zoom: 1
+  selected: []
+modules:
+  - id: c33d9f62-57d7-4cc1-b6ad-69513dc91008
+    name: Main Oscillator
+    type_id: app.oscillator
+    type_version: 2.0.0
+    abi: builtin-2
+    state_version: 1
+    flavor: Vanilla
+    position: { x: 0, y: 0 }
+    bypassed: false
+    input_ui: {}
+    inputs:
+      note:
+        signal: note
+        manual_hz: 440
+        transpose_semitones: 0
+    state:
+      parameters:
+        waveform: sine
+      custom: {}
+  - id: 5b2c1f0a-9d3e-4f6b-8a7c-2e1d0c9b8a7f
+    name: Main Output
+    type_id: app.audio_output
+    type_version: 2.0.0
+    abi: builtin-2
+    state_version: 1
+    flavor: Vanilla
+    position: { x: 8, y: 0 }
+    bypassed: false
+    input_ui: {}
+    inputs:
+      audio_in:
+        signal: audio
+        gain: 1
+        default_source: silence
+        seed: 0
+    state:
+      parameters: {}
+      custom: {}
+wires:
+  - id: 3f0a1b2c-4d5e-6f70-8192-a3b4c5d6e7f8
+    signal: audio
+    source: { module: c33d9f62-57d7-4cc1-b6ad-69513dc91008, port: audio_out }
+    target: { module: 5b2c1f0a-9d3e-4f6b-8a7c-2e1d0c9b8a7f, port: audio_in }
+    order: 0
+    waypoints: []
+input_sync: []
+macros: []
