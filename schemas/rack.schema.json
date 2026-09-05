@@ -1,0 +1,579 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitfiddle.local/schemas/rack-2.schema.json",
+  "title": "bitfiddle Rack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "app_version",
+    "rack",
+    "engine",
+    "view",
+    "modules",
+    "wires",
+    "input_sync",
+    "macros"
+  ],
+  "properties": {
+    "format": {
+      "const": "bitfiddle-rack"
+    },
+    "format_version": {
+      "const": 2
+    },
+    "app_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "rack": {
+      "$ref": "#/$defs/rackMetadata"
+    },
+    "engine": {
+      "$ref": "#/$defs/engine"
+    },
+    "view": {
+      "$ref": "#/$defs/view"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "wires": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/wire"
+      }
+    },
+    "input_sync": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/inputSync"
+      }
+    },
+    "macros": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/macroInstance"
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+    },
+    "signal": {
+      "enum": [
+        "clock",
+        "note",
+        "audio",
+        "control",
+        "gate"
+      ]
+    },
+    "gridPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        }
+      }
+    },
+    "rackMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "revision",
+        "created_at",
+        "modified_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_rate",
+        "block_size",
+        "default_device_id"
+      ],
+      "properties": {
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 8000,
+          "maximum": 384000
+        },
+        "block_size": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 4096
+        },
+        "default_device_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pan",
+        "zoom",
+        "selected"
+      ],
+      "properties": {
+        "pan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          }
+        },
+        "zoom": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 2.5
+        },
+        "selected": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/uuid"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "type_id",
+        "type_version",
+        "abi",
+        "state_version",
+        "flavor",
+        "position",
+        "bypassed",
+        "input_ui",
+        "inputs",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "type_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "type_version": {
+          "$ref": "#/$defs/semver"
+        },
+        "abi": {
+          "enum": [
+            "builtin-2",
+            "wasm-2",
+            "native-2",
+            "missing-2"
+          ]
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "flavor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "position": {
+          "$ref": "#/$defs/gridPoint"
+        },
+        "bypassed": {
+          "type": "boolean"
+        },
+        "input_ui": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/inputUi"
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/inputState"
+          }
+        },
+        "state": {
+          "$ref": "#/$defs/moduleState"
+        }
+      }
+    },
+    "moduleState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parameters",
+        "custom"
+      ],
+      "properties": {
+        "parameters": {
+          "type": "object"
+        },
+        "custom": {
+          "type": "object"
+        }
+      }
+    },
+    "inputUi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      }
+    },
+    "inputState": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/clockInput"
+        },
+        {
+          "$ref": "#/$defs/noteInput"
+        },
+        {
+          "$ref": "#/$defs/audioInput"
+        },
+        {
+          "$ref": "#/$defs/controlInput"
+        },
+        {
+          "$ref": "#/$defs/gateInput"
+        }
+      ]
+    },
+    "clockInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "manual_hz"
+      ],
+      "properties": {
+        "signal": {
+          "const": "clock"
+        },
+        "manual_hz": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 40
+        }
+      }
+    },
+    "noteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "manual_hz",
+        "transpose_semitones"
+      ],
+      "properties": {
+        "signal": {
+          "const": "note"
+        },
+        "manual_hz": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 20000
+        },
+        "transpose_semitones": {
+          "type": "number",
+          "minimum": -240,
+          "maximum": 240
+        }
+      }
+    },
+    "audioInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "gain",
+        "default_source",
+        "seed"
+      ],
+      "properties": {
+        "signal": {
+          "const": "audio"
+        },
+        "gain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "default_source": {
+          "enum": [
+            "silence",
+            "white_noise",
+            "sine_440",
+            "saw_440",
+            "triangle_440",
+            "square_440"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "controlInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "baseline",
+        "window"
+      ],
+      "properties": {
+        "signal": {
+          "const": "control"
+        },
+        "baseline": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "window": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        }
+      }
+    },
+    "gateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "latched"
+      ],
+      "properties": {
+        "signal": {
+          "const": "gate"
+        },
+        "latched": {
+          "type": "boolean"
+        }
+      }
+    },
+    "outputEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "port"
+      ],
+      "properties": {
+        "module": {
+          "$ref": "#/$defs/uuid"
+        },
+        "port": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "inputEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "port"
+      ],
+      "properties": {
+        "module": {
+          "$ref": "#/$defs/uuid"
+        },
+        "port": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "wire": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "signal",
+        "source",
+        "target",
+        "order",
+        "waypoints"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "signal": {
+          "$ref": "#/$defs/signal"
+        },
+        "source": {
+          "$ref": "#/$defs/outputEndpoint"
+        },
+        "target": {
+          "$ref": "#/$defs/inputEndpoint"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gridPoint"
+          }
+        }
+      }
+    },
+    "inputSync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "signal",
+        "a",
+        "b",
+        "waypoints"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "signal": {
+          "$ref": "#/$defs/signal"
+        },
+        "a": {
+          "$ref": "#/$defs/inputEndpoint"
+        },
+        "b": {
+          "$ref": "#/$defs/inputEndpoint"
+        },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gridPoint"
+          }
+        }
+      }
+    },
+    "macroInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_id",
+        "global_id",
+        "global_name",
+        "format_version",
+        "adopted_revision",
+        "adopted_definition",
+        "current_definition"
+      ],
+      "properties": {
+        "module_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "global_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "global_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format_version": {
+          "const": 2
+        },
+        "adopted_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "adopted_definition": {
+          "type": "object"
+        },
+        "current_definition": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

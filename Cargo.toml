@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/bitfiddle-engine",
+    "crates/bitfiddle-cli",
+]
+# The Tauri app crate is built by run.sh / `npx tauri dev` and requires
+# platform webview toolchains, so it is not a default workspace member.
+exclude = ["crates/bitfiddle-app"]
+
+[workspace.package]
+version = "2.0.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "1"
+jsonschema = "0.17"
+hound = "3.5"

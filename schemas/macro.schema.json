@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bitfiddle.local/schemas/macro-2.schema.json",
+  "title": "bitfiddle Macro",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "id",
+    "name",
+    "description",
+    "revision",
+    "created_at",
+    "modified_at",
+    "definition"
+  ],
+  "properties": {
+    "format": { "const": "bitfiddle-macro" },
+    "format_version": { "const": 2 },
+    "id": { "$ref": "#/$defs/uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "description": { "type": "string" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "modified_at": { "type": "string", "format": "date-time" },
+    "definition": { "$ref": "#/$defs/macroDefinition" }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+    },
+    "signal": {
+      "enum": ["clock", "note", "audio", "control", "gate"]
+    },
+    "gridPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      }
+    },
+    "macroDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modules", "wires", "input_sync", "nested", "interface"],
+      "properties": {
+        "modules": { "type": "array", "items": { "type": "object" } },
+        "wires": { "type": "array", "items": { "type": "object" } },
+        "input_sync": { "type": "array", "items": { "type": "object" } },
+        "nested": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nestedInstance" }
+        },
+        "interface": { "$ref": "#/$defs/interface" }
+      }
+    },
+    "nestedInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_id",
+        "global_id",
+        "global_name",
+        "format_version",
+        "adopted_revision",
+        "adopted_definition",
+        "current_definition"
+      ],
+      "properties": {
+        "module_id": { "$ref": "#/$defs/uuid" },
+        "global_id": { "$ref": "#/$defs/uuid" },
+        "global_name": { "type": "string", "minLength": 1 },
+        "format_version": { "const": 2 },
+        "adopted_revision": { "type": "integer", "minimum": 1 },
+        "adopted_definition": { "type": "object" },
+        "current_definition": { "type": ["object", "null"] }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs", "outputs"],
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/wallInput" }
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/wallOutput" }
+        }
+      }
+    },
+    "wallInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "signal", "order", "description", "targets"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "signal": { "$ref": "#/$defs/signal" },
+        "order": { "type": "integer", "minimum": 0 },
+        "description": { "type": "string" },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/endpoint" }
+        }
+      }
+    },
+    "wallOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "signal", "order", "description", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "signal": { "$ref": "#/$defs/signal" },
+        "order": { "type": "integer", "minimum": 0 },
+        "description": { "type": "string" },
+        "source": { "$ref": "#/$defs/endpoint" }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "port"],
+      "properties": {
+        "module": { "$ref": "#/$defs/uuid" },
+        "port": { "$ref": "#/$defs/identifier" }
+      }
+    }
+  }
+}

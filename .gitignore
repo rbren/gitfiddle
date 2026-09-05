@@ -1,0 +1,8 @@
+/target
+node_modules/
+dist/
+.vite/
+*.wav
+!fixtures/golden/*.wav
+.DS_Store
+frontend/coverage/
