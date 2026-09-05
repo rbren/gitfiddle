@@ -5,6 +5,7 @@
 
 pub mod document;
 pub mod graph;
+pub mod manifest;
 pub mod merge;
 pub mod modules;
 pub mod render;
