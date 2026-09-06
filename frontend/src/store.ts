@@ -1,6 +1,6 @@
 import { createModule, descriptorFor } from './modules'
 import { collides, nearestFreePosition } from './geometry'
-import { portsCompatible } from './router'
+import { portsCompatible, wouldCreateCycle } from './router'
 import { parseRackYaml, rackToYaml } from './yaml'
 import type { GridPoint, ModuleInstance, PortRef, RackDocument, UUID } from './types'
 
@@ -69,26 +69,37 @@ export class RackStore {
     this.transact((draft) => { draft.modules = combined })
     return true
   }
-  deleteSelected() {
-    const selected = new Set(this.document.view.selected)
+  deleteModules(ids: UUID[]) {
+    const selected = new Set(ids)
     if (!selected.size) return
     this.transact((draft) => {
       draft.modules = draft.modules.filter((module) => !selected.has(module.id))
       draft.wires = draft.wires.filter((wire) => !selected.has(wire.source.module) && !selected.has(wire.target.module))
       draft.input_sync = draft.input_sync.filter((sync) => !selected.has(sync.a.module) && !selected.has(sync.b.module))
-      draft.view.selected = []
+      draft.view.selected = draft.view.selected.filter((id) => !selected.has(id))
     })
   }
+  deleteSelected() { this.deleteModules(this.document.view.selected) }
   addWire(a: PortRef, b: PortRef): { valid: boolean; reason?: string } {
     const result = portsCompatible(a, b)
     if (!result.valid) return result
+    if (a.direction === 'input' && b.direction === 'input') {
+      this.transact((draft) => {
+        draft.input_sync.push({ id: crypto.randomUUID(), signal: a.signal, a: { module: a.module, port: a.port }, b: { module: b.module, port: b.port }, waypoints: [] })
+        const sourceModule = draft.modules.find((module) => module.id === a.module)
+        const targetModule = draft.modules.find((module) => module.id === b.module)
+        if (sourceModule && targetModule) targetModule.inputs[b.port] = clone(sourceModule.inputs[a.port])
+      })
+      return { valid: true }
+    }
     const source = a.direction === 'output' ? a : b
     const target = a.direction === 'input' ? a : b
     if (source.signal === 'clock' && this.document.wires.some((wire) => wire.target.module === target.module && wire.target.port === target.port)) return { valid: false, reason: 'Clock inputs accept one source.' }
+    if (wouldCreateCycle(this.document.wires, source.module, target.module)) return { valid: false, reason: 'Connection would create a feedback cycle.' }
     this.transact((draft) => draft.wires.push({ id: crypto.randomUUID(), signal: source.signal, source: { module: source.module, port: source.port }, target: { module: target.module, port: target.port }, order: draft.wires.length, waypoints: [] }))
     return { valid: true }
   }
-  removeWire(id: UUID) { this.transact((draft) => { draft.wires = draft.wires.filter((wire) => wire.id !== id) }) }
+  removeWire(id: UUID) { this.transact((draft) => { draft.wires = draft.wires.filter((wire) => wire.id !== id); draft.input_sync = draft.input_sync.filter((sync) => sync.id !== id) }) }
   serialize() { return rackToYaml(this.document) }
   applyYaml(text: string) { this.commit(parseRackYaml(text)) }
   undo() {

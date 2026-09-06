@@ -4,7 +4,7 @@ import { dump, load } from 'js-yaml'
 import rackSchema from '../../schemas/rack.schema.json'
 import { descriptorFor } from './modules'
 import { moduleRect, rectanglesOverlap } from './geometry'
-import { portsCompatible } from './router'
+import { portsCompatible, wouldCreateCycle } from './router'
 import type { PortRef, RackDocument } from './types'
 
 const ajv = new Ajv2020({ allErrors: true, strict: false })
@@ -19,7 +19,7 @@ export function parseRackYaml(text: string): RackDocument {
   if (/(^|:\s*)[&*][A-Za-z0-9_-]+/m.test(text)) throw new Error('YAML anchors and aliases are not allowed.')
   const candidate = load(text, { json: true })
   if (!validateSchema(candidate)) throw new Error(validateSchema.errors?.map((error) => `${error.instancePath || '/'} ${error.message}`).join('; ') ?? 'Rack schema validation failed.')
-  const document = candidate as RackDocument
+  const document = candidate as unknown as RackDocument
   validateSemantics(document)
   return document
 }
@@ -52,4 +52,17 @@ export function validateSemantics(document: RackDocument): void {
     const result = portsCompatible({ ...wire.source, direction: 'output', signal: sourcePort.signal } as PortRef, { ...wire.target, direction: 'input', signal: targetPort.signal } as PortRef)
     if (!result.valid || wire.signal !== sourcePort.signal) throw new Error(`Wire ${wire.id}: ${result.reason ?? 'signal mismatch'}`)
   }
+  if (document.wires.some((wire, index) => wouldCreateCycle(document.wires.filter((_, other) => other !== index), wire.source.module, wire.target.module))) throw new Error('Rack graph contains a feedback cycle.')
+  for (const sync of document.input_sync) {
+    if (wireIds.has(sync.id)) throw new Error(`Duplicate wire id: ${sync.id}`)
+    wireIds.add(sync.id)
+    const aModule = document.modules.find((module) => module.id === sync.a.module)
+    const bModule = document.modules.find((module) => module.id === sync.b.module)
+    const aPort = aModule && descriptorFor(aModule.type_id)?.inputs.find((port) => port.id === sync.a.port)
+    const bPort = bModule && descriptorFor(bModule.type_id)?.inputs.find((port) => port.id === sync.b.port)
+    if (!aModule || !bModule || !aPort || !bPort) throw new Error(`Input sync ${sync.id} has an unknown endpoint.`)
+    if (aPort.signal !== bPort.signal || sync.signal !== aPort.signal) throw new Error(`Input sync ${sync.id} has mismatched signal types.`)
+    if (JSON.stringify(aModule.inputs[sync.a.port]) !== JSON.stringify(bModule.inputs[sync.b.port])) throw new Error(`Input sync ${sync.id} has divergent saved input state.`)
+  }
+
 }

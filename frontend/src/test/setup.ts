@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { webcrypto } from 'node:crypto'
+import { cleanup } from '@testing-library/react'
+import { afterEach } from 'vitest'
 
-if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto })
-if (!globalThis.crypto.randomUUID) Object.defineProperty(globalThis.crypto, 'randomUUID', { value: webcrypto.randomUUID.bind(webcrypto) })
+afterEach(cleanup)

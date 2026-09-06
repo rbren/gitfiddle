@@ -28,10 +28,27 @@ describe('typed wires', () => {
   const output = (signal: PortRef['signal']): PortRef => ({ module: crypto.randomUUID(), port: 'out', direction: 'output', signal })
   const input = (signal: PortRef['signal']): PortRef => ({ module: crypto.randomUUID(), port: 'in', direction: 'input', signal })
 
-  it('accepts only matching signal types and opposite directions', () => {
+  it('accepts matching output-input and input-sync endpoints', () => {
     expect(portsCompatible(output('audio'), input('audio')).valid).toBe(true)
+    expect(portsCompatible(input('note'), input('note')).valid).toBe(true)
     expect(portsCompatible(output('note'), input('gate'))).toMatchObject({ valid: false })
     expect(portsCompatible(output('control'), output('control'))).toMatchObject({ valid: false })
+  })
+
+  it('creates input sync and rejects a connection that closes a cycle', () => {
+    const store = new RackStore(createEmptyRack())
+    const firstOscillator = store.addModule('app.oscillator', { x: 0, y: 0 })
+    const secondOscillator = store.addModule('app.oscillator', { x: 8, y: 0 })
+    const firstNote = store.portRef(firstOscillator.id, 'note')!
+    const secondNote = store.portRef(secondOscillator.id, 'note')!
+    expect(store.addWire(firstNote, secondNote).valid).toBe(true)
+    expect(store.getSnapshot().input_sync).toHaveLength(1)
+
+    const firstVolume = store.addModule('app.volume', { x: 0, y: 8 })
+    const secondVolume = store.addModule('app.volume', { x: 8, y: 8 })
+    expect(store.addWire(store.portRef(firstVolume.id, 'audio_out')!, store.portRef(secondVolume.id, 'audio_in')!).valid).toBe(true)
+    expect(store.addWire(store.portRef(secondVolume.id, 'audio_out')!, store.portRef(firstVolume.id, 'audio_in')!)).toMatchObject({ valid: false })
+    expect(store.getSnapshot().wires).toHaveLength(1)
   })
 })
 

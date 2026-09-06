@@ -84,15 +84,40 @@ export function routeWire(modules: ModuleInstance[], source: PortRef, target: Po
   return compact([startAnchor, ...route, endAnchor])
 }
 
+export function routeToPoint(modules: ModuleInstance[], source: PortRef, target: GridPoint): GridPoint[] {
+  const sourceModule = modules.find((module) => module.id === source.module)
+  if (!sourceModule) return []
+  const anchor = anchorFor(sourceModule, source.port, source.direction)
+  const start = outward(anchor)
+  const obstacles = modules.map(moduleRect).map(expanded)
+  return compact([anchor, ...routeSegment(start, target, obstacles)])
+}
+
+
 export function pathLength(points: GridPoint[]): number {
   return points.slice(1).reduce((total, point, index) => total + Math.abs(point.x - points[index].x) + Math.abs(point.y - points[index].y), 0)
 }
 
 export function portsCompatible(a: PortRef, b: PortRef): { valid: boolean; reason?: string } {
   if (a.module === b.module && a.port === b.port && a.direction === b.direction) return { valid: false, reason: 'Choose another port.' }
-  if (a.direction === b.direction) return { valid: false, reason: 'Connect an output to an input.' }
   if (a.signal !== b.signal) return { valid: false, reason: `${a.signal} cannot connect to ${b.signal}.` }
+  if (a.direction === 'output' && b.direction === 'output') return { valid: false, reason: 'Two outputs cannot connect.' }
   return { valid: true }
+}
+
+export function wouldCreateCycle(wires: { source: { module: string }; target: { module: string } }[], source: string, target: string): boolean {
+  const edges = new Map<string, string[]>()
+  for (const wire of wires) edges.set(wire.source.module, [...(edges.get(wire.source.module) ?? []), wire.target.module])
+  const pending = [target]
+  const seen = new Set<string>()
+  while (pending.length) {
+    const current = pending.pop()!
+    if (current === source) return true
+    if (seen.has(current)) continue
+    seen.add(current)
+    pending.push(...(edges.get(current) ?? []))
+  }
+  return false
 }
 
 export function signalStroke(signal: SignalType): string {
