@@ -16,7 +16,7 @@ desktop = ["dep:tauri"]
 [dependencies]
 bitfiddle-engine = { path = "../bitfiddle-engine" }
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "2", optional = true }
+tauri = { version = "2", optional = true , features = [] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -22,9 +22,18 @@ if [ ! -d frontend/node_modules ]; then
   (cd frontend && npm install)
 fi
 
-# Tauri CLI (repository-local via npm)
 echo "==> Building frontend"
 (cd frontend && npm run build)
 
+# On Linux, Tauri needs a display server to open a window.
+if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  echo "error: no display server found (DISPLAY/WAYLAND_DISPLAY unset)." >&2
+  echo "bitfiddle is a desktop app and cannot launch headless." >&2
+  echo "Build artifacts are still available; run 'cargo test' to verify the engine." >&2
+  exit 1
+fi
+
 echo "==> Launching bitfiddle"
-(cd frontend && npx tauri dev)
+# The Tauri CLI resolves tauri.conf.json from the app crate directory; the
+# CLI binary itself is a repository-local npm dev dependency of the frontend.
+(cd crates/bitfiddle-app && exec ../../frontend/node_modules/.bin/tauri dev)
