@@ -1,0 +1,22 @@
+[package]
+name = "bitfiddle-app"
+version = "2.0.0"
+edition = "2021"
+license = "MIT"
+description = "Tauri 2 desktop shell for bitfiddle"
+
+[lib]
+name = "bitfiddle_app"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[features]
+default = ["desktop"]
+desktop = ["dep:tauri"]
+
+[dependencies]
+bitfiddle-engine = { path = "../bitfiddle-engine" }
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", optional = true }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
