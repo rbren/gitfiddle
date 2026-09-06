@@ -156,8 +156,8 @@ pub fn validate_manifest(json_text: &str) -> Result<Manifest, ManifestError> {
 pub fn validate_manifest_semantics(m: &Manifest) -> Result<(), ManifestError> {
     if m.size.width_units == 0
         || m.size.height_units == 0
-        || m.size.width_units % 4 != 0
-        || m.size.height_units % 4 != 0
+        || !m.size.width_units.is_multiple_of(4)
+        || !m.size.height_units.is_multiple_of(4)
     {
         return Err(ManifestError::InvalidDimensions(
             m.size.width_units,
