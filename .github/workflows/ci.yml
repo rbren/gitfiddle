@@ -23,6 +23,11 @@ jobs:
           for f in fixtures/*.bitfiddle.yaml; do
             cargo run -q -p bitfiddle-cli -- validate "$f"
           done
+          for f in fixtures/invalid/*.bitfiddle.yaml; do
+            if cargo run -q -p bitfiddle-cli -- validate "$f"; then
+              echo "expected $f to fail validation" && exit 1
+            fi
+          done
       - name: Offline render smoke
         run: cargo run -q -p bitfiddle-cli -- render fixtures/sine.bitfiddle.yaml /tmp/out.wav --seconds 1
 

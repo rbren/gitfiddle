@@ -1,0 +1,85 @@
+# INVALID: a Clock input with two sources (PRD §6.2).
+format: bitfiddle-rack
+format_version: 2
+app_version: 2.0.0
+rack:
+  id: 4d5e6f70-8192-4a3b-b4c5-d6e7f8091a2b
+  name: Two Clock Sources (invalid)
+  revision: 1
+  created_at: "2026-05-21T18:00:00Z"
+  modified_at: "2026-05-21T18:00:00Z"
+engine:
+  sample_rate: 48000
+  block_size: 128
+  default_device_id: null
+view:
+  pan: { x: 0, y: 0 }
+  zoom: 1
+  selected: []
+modules:
+  - id: aaaaaaaa-1111-4111-8111-111111111111
+    name: Clock A
+    type_id: app.clock
+    type_version: 2.0.0
+    abi: builtin-2
+    state_version: 1
+    flavor: Vanilla
+    position: { x: 0, y: 0 }
+    bypassed: false
+    input_ui: {}
+    inputs:
+      rate:
+        signal: clock
+        manual_hz: 2
+    state:
+      parameters: {}
+      custom: {}
+  - id: bbbbbbbb-2222-4222-8222-222222222222
+    name: Clock B
+    type_id: app.clock
+    type_version: 2.0.0
+    abi: builtin-2
+    state_version: 1
+    flavor: Vanilla
+    position: { x: 8, y: 0 }
+    bypassed: false
+    input_ui: {}
+    inputs:
+      rate:
+        signal: clock
+        manual_hz: 4
+    state:
+      parameters: {}
+      custom: {}
+  - id: cccccccc-3333-4333-8333-333333333333
+    name: Clock C
+    type_id: app.clock
+    type_version: 2.0.0
+    abi: builtin-2
+    state_version: 1
+    flavor: Vanilla
+    position: { x: 16, y: 0 }
+    bypassed: false
+    input_ui: {}
+    inputs:
+      rate:
+        signal: clock
+        manual_hz: 1
+    state:
+      parameters: {}
+      custom: {}
+wires:
+  - id: 10000000-0000-4000-8000-000000000001
+    signal: clock
+    source: { module: aaaaaaaa-1111-4111-8111-111111111111, port: clock_out }
+    target: { module: cccccccc-3333-4333-8333-333333333333, port: rate }
+    order: 0
+    waypoints: []
+  - id: 10000000-0000-4000-8000-000000000002
+    signal: clock
+    source: { module: bbbbbbbb-2222-4222-8222-222222222222, port: clock_out }
+    target: { module: cccccccc-3333-4333-8333-333333333333, port: rate }
+    order: 1
+    waypoints: []
+input_sync: []
+macros: []
